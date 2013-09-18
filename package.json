@@ -9,6 +9,7 @@
     "express": "3.4.0",
     "jshtml": "*",
     "sequelize" : "*",
-    "mysql" : "~2.0.0-alpha7"
+    "mysql" : "~2.0.0-alpha7",
+    "mkdirp" : "*"
   }
 }

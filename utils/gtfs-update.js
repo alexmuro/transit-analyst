@@ -1,4 +1,7 @@
 var http = require("http");
+var path = require('path');
+var fs = require('fs');
+var mkdirp = require('mkdirp');
 
 var options = {
     host: 'www.gtfs-data-exchange.com',
@@ -6,19 +9,14 @@ var options = {
 };
 
 http.get(options, function (http_res) {
-    // initialize the container for our data
-    console.log(http_res);
+    //console.log(http_res);
     var data = "";
 
-    // this event fires many times, each time collecting another piece of the response
     http_res.on("data", function (chunk) {
-        // append this chunk to our growing `data` var
         data += chunk;
     });
 
-    // this event fires *one* time, after all the `data` events/chunks have been gathered
     http_res.on("end", function () {
-        // you can use res.send instead of console.log to output via express
         parseAgencies(JSON.parse(data).data);
     });
 })
@@ -31,9 +29,66 @@ var parseAgencies = function(agencyList){
     var validAgencyCount = 0;
     agencyList.forEach(function(agency){
         if(agency['is_official'] && agency['country'] == 'United States'){
-            console.log( agency['state']);
+            //console.log( agency['dataexchange_id']);
             validAgencyCount++
+            var options = {
+                host: 'www.gtfs-data-exchange.com',
+                path: '/api/agency?agency='+agency['dataexchange_id']
+            };
+
+            http.get(options, function (http_res) {
+                //console.log(http_res);
+                var data = "";
+
+                http_res.on("data", function (chunk) {
+                    data += chunk;
+                });
+
+                http_res.on("end", function () {
+                    
+
+                    mkdirp(path.resolve(__dirname,"../gtfs/")+"/"+agency['dataexchange_id'], function(err){
+                        if (err) console.error(err)
+                        else console.log('hooray!')
+                    });
+
+                    //mkdirp('')
+                    console.log( "Agency id:  " + agency['dataexchange_id'],"File URL:  " + parseAgent(JSON.parse(data).data,agency['dataexchange_id'])) 
+                });
+            })
+            .on('error', function(e) {
+              console.log(e);
+              console.log("Got error: " + e);
+            });
+
         }
     })
-    console.log("Num Agencies:"+validAgencyCount);
+    //console.log("Num Agencies:"+validAgencyCount);
+}
+
+
+
+
+
+var download = function(url, dest, cb) {
+  var file = fs.createWriteStream(dest);
+  var request = http.get(url, function(response) {
+    response.pipe(file);
+    file.on('finish', function() {
+      file.close();
+      cb();
+    });
+  });
+}
+
+var parseAgent = function(agent,house){
+    var fileNameOrig = agent["datafiles"][0].file_url;
+    var nameSplit = fileNameOrig.substr(29)
+
+    var destinationStream = path.resolve(__dirname,"../gtfs/" + house + "/" + nameSplit);
+    download(agent["datafiles"][0].file_url,destinationStream,function(){});
+
+    return agent["datafiles"][0].file_url;
+
+
 }
