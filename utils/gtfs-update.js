@@ -36,7 +36,7 @@ http.get(options, function (http_res) {
 
 var parseAgencies = function(agencyList){
     var validAgencyCount = 0;
-    var conString = "postgres://postgres:am1238wk@localhost/postgres";
+    var conString = "postgres://postgres:test@localhost/postgres";
     var client = new pg.Client(conString);
     client.connect(function(err) {
       if(err) {
@@ -64,11 +64,11 @@ var parseAgencies = function(agencyList){
 
                     http_res.on("end", function () {
                         
-                        // mkdirp(path.resolve(__dirname,"../gtfs/")+"/"+agency['dataexchange_id'], function(err){
-                        //     if (err) console.error(err)
-                        //     else console.log('hooray!')
-                        // });
-                        //console.log( "Agency id:  " + agency['dataexchange_id'],"File URL:  " + ) 
+                        mkdirp(path.resolve(__dirname,"../gtfs/")+"/"+agency['dataexchange_id'], function(err){
+                            if (err) console.error(err)
+                            else console.log('hooray!')
+                        });
+                        console.log( "Agency id:  " + agency['dataexchange_id'],"File URL:  " + "") 
                         parseAgent(JSON.parse(data).data,agency['dataexchange_id'],client);
                     });
                 })
@@ -82,8 +82,6 @@ var parseAgencies = function(agencyList){
       });
     //console.log("Num Agencies:"+validAgencyCount);
 }
-
-
 
 
 
@@ -107,31 +105,30 @@ var parseAgent = function(agent,house, client){
     //console.log(nameSplit);
     //console.log(destinationStream);
 
-    var child = exec("gtfsdb-load --database_url postgresql://postgres:am1238wk@localhost/"+schemaName+" --is_geospatial "+destinationStream,
+
+    var query = 'CREATE DATABASE "'+schemaName+'" TEMPLATE=template_postgis';
+    client.query(query, function(err, result) {
+        if(err) {
+            return console.error('error running query:',query, err);
+        }
+        console.log("gtfsdb-load --database_url"  + " " +schemaName+" --is_geospatial "+destinationStream);
+        var child = exec("gtfsdb-load --database_url postgresql://postgres:am1238wk@localhost/"+schemaName+" --is_geospatial "+destinationStream,
             function (error, stdout, stderr) {
                 console.log(nameSplit);
                 console.log('stdout: ' + stdout);
                 console.log('stderr: ' + stderr);
                 if (error !== null) {
-                  console.log('exec error: ' + error);
+                    console.log('exec error: ' + error);
                 }
             }
-    )
-
-    // var query = 'CREATE DATABASE "'+schemaName+'" TEMPLATE=template_postgis';
-    // client.query(query, function(err, result) {
-    //     if(err) {
-    //         return console.error('error running query:',query, err);
-    //     }
-    //     console.log("gtfsdb-load --database_url postgresql://postgres:am1238wk@localhost/"+schemaName+" --is_geospatial "+destinationStream);
-        
-    // });
+            )
+    });
 
    
     
     
     
-    //download(agent["datafiles"][0].file_url,destinationStream,function(){});
+    download(agent["datafiles"][0].file_url,destinationStream,function(){});
 
-    //return agent["datafiles"][0].file_url;
+    return agent["datafiles"][0].file_url;
 }
