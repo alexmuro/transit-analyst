@@ -3,7 +3,9 @@ var path = require('path');
 var fs = require('fs');
 var mkdirp = require('mkdirp');
 var pg = require('pg'); 
-var exec = require('child_process').exec
+var exec = require('child_process').exec;
+var sh = require("execSync")
+
 
 
 
@@ -36,7 +38,7 @@ http.get(options, function (http_res) {
 
 var parseAgencies = function(agencyList){
     var validAgencyCount = 0;
-    var conString = "postgres://postgres:transit@lor.availabs.org:5432/GTFS";
+    var conString = "postgres://postgres:am1238wk@localhost:5432/gtfs";
     var client = new pg.Client(conString);
     client.connect(function(err) {
       if(err) {
@@ -64,11 +66,13 @@ var parseAgencies = function(agencyList){
 
                     http_res.on("end", function () {
                         
-                        // mkdirp(path.resolve(__dirname,"../gtfs/")+"/"+agency['dataexchange_id'], function(err){
-                        //     if (err) console.error(err)
-                        //     else console.log('hooray!')
-                        // });
-                        //console.log( "Agency id:  " + agency['dataexchange_id'],"File URL:  " + "") 
+                        mkdirp(path.resolve(__dirname,"../gtfs/")+"/"+agency['dataexchange_id'], function(err){
+                            if (err) console.error(err)
+                            else console.log('created dir '+agency['dataexchange_id']);
+                        });
+                        if(agency["is_official"] && agency['country'] === 'United States'){
+                           console.log( "Agency id:  " + agency['dataexchange_id'],"File URL:  " + "") 
+                        }
                         parseAgent(JSON.parse(data).data,agency['dataexchange_id'],client);
                     });
                 })
@@ -102,29 +106,16 @@ var parseAgent = function(agent,house, client){
     var schemaName = fileNameOrig.substr(29).split(".")[0];
     
     var destinationStream = path.resolve(__dirname,"../gtfs/" + house + "/" + nameSplit);
-    //console.log(nameSplit);
-    //console.log(destinationStream);
+    //var query = 'CREATE SCHEMA "'+schemaName+'" ';
+    //client.query(query, function(err, result) {
+    //    if(err) {
+    //        return console.error('error running query:',query, err);
+    //    }
+    var result = sh.exec("gtfsdb-load --database_url postgresql://postgres:am1238wk@localhost/gtfs --schema="+schemaName+" --is_geospatial "+destinationStream);
+    console.log('return code ' + result.code);
+    console.log('stdout + stderr ' + result.stdout);
 
-
-    var query = 'CREATE SCHEMA "'+schemaName+'" ';
-    client.query(query, function(err, result) {
-        if(err) {
-            return console.error('error running query:',query, err);
-        }
-        console.log("gtfsdb-load --database_url"  + " " +schemaName+" --is_geospatial "+destinationStream);
-        // var child = exec("gtfsdb-load --database_url postgresql://postgres:am1238wk@localhost/"+schemaName+" --is_geospatial "+destinationStream,
-        //     function (error, stdout, stderr) {
-        //         console.log(nameSplit);
-        //         console.log('stdout: ' + stdout);
-        //         console.log('stderr: ' + stderr);
-        //         if (error !== null) {
-        //             console.log('exec error: ' + error);
-        //         }
-        //     }
-        // );
-    });
-
-   
+    //})
     
     
     
